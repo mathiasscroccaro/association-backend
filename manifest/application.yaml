@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: association-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: association-backend
+  template:
+    metadata:
+      labels:
+        app: association-backend
+    spec:
+      containers:
+        - name: association-backend
+          image: localhost:32000/association-backend
+          ports:
+            - containerPort: 8000
+          volumeMounts:
+            - name: association-backend-volume
+              mountPath: /mnt
+      volumes:
+        - name: association-backend-volume
+          persistentVolumeClaim:
+            claimName: association-backend-hdd
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: association-backend
+spec:
+  selector:
+    app: association-backend
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+  name: association-backend-ingress
+spec:
+  rules:
+    - host: app.mathias.dev.br
+      http:
+        paths:
+          - path: /association-backend(/|$)(.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: association-backend
+                port:
+                  number: 80
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: association-backend-hdd
+spec:
+  storageClassName: external-hdd-hostpath
+  accessModes: [ReadWriteOnce]
+  resources: { requests: { storage: 1Gi } }
